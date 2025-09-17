@@ -1,0 +1,38 @@
+# Ignore Python bytecode files
+*.pyc
+*.pyo
+__pycache__/
+
+# Ignore virtual environment folders
+venv/
+env/
+
+# Ignore IDE/editor config files
+.vscode/
+.idea/
+
+# Ignore Jupyter Notebook checkpoints
+.ipynb_checkpoints/
+
+# Ignore system files
+.DS_Store  # macOS specific
+Thumbs.db  # Windows specific
+
+# Ignore log files
+*.log
+
+# Ignore dependency directories
+*.egg-info/
+dist/
+build/
+*.egg
+
+# Ignore SQLite database file (if you use it)
+*.sqlite3
+
+# Ignore PyInstaller files
+*.spec
+
+# Ignore other files
+*.bak
+*.swp

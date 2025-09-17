@@ -1,0 +1,2 @@
+matplotlib==3.5.1  # For plotting and visualizations
+unittest2==1.1.0   # If you're using unittest2 for test cases (optional)
