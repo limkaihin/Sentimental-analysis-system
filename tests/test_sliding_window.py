@@ -1,5 +1,5 @@
 import pytest
-from sliding_window import sliding_window_sentiment_analysis
+from lib.sliding_window import sliding_window_sentiment_analysis
 
 def test_empty_reviews_list_returns_empty_lists():
     afinn = {"good": 3, "bad": -3}

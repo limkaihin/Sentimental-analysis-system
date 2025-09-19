@@ -1,5 +1,5 @@
 import pytest
-from sentiment_scoring import calculate_window_sentiment
+from lib.sentiment_scoring import calculate_window_sentiment
 
 def test_scoring_basic_words():
     afinn = {"good": 3, "bad": -3, "great": 3}

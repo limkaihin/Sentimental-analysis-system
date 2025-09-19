@@ -1,5 +1,5 @@
 import pytest
-from sliding_window import sliding_window_sentiment_analysis
+from lib.sliding_window import sliding_window_sentiment_analysis
 
 def test_sentence_windows_basic_independent():
     # Minimal inline lexicons (no external files)

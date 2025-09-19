@@ -1,5 +1,5 @@
 import pytest
-from preprocessing import normalize_text, tokenize, sliding_windows
+from lib.preprocessing import normalize_text, tokenize, sliding_windows
 
 def test_normalize_text_basic():
     raw = "Great movie!\r\nLoved it.\t\tSo good."

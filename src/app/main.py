@@ -3,11 +3,11 @@ import argparse
 from pathlib import Path
 from typing import List
 
-from lexicon import load_tab_lexicon
-from preprocessing import read_text_files
-from sliding_window import sliding_window_sentiment_analysis
-from extrema_segments import extrema_segments
-from visualisation import plot_review_windows, annotate_extrema
+from lib.lexicon import load_tab_lexicon
+from lib.preprocessing import read_text_files
+from lib.sliding_window import sliding_window_sentiment_analysis
+from lib.extrema_segments import extrema_segments
+from lib.visualisation import plot_review_windows, annotate_extrema
 
 def parse_args() -> argparse.Namespace:
     """
