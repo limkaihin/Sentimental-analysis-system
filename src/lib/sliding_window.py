@@ -1,7 +1,7 @@
 from __future__ import annotations
 from typing import List, Tuple, Dict, Literal
-from lib.preprocessing import tokenize, split_sentences
-from lib.sentiment_scoring import calculate_window_sentiment
+from src.lib.preprocessing import tokenize, split_sentences
+from src.lib.sentiment_scoring import calculate_window_sentiment
 
 Unit = Literal["token", "sentence"]
 
