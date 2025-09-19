@@ -44,6 +44,29 @@ def read_text_files(root: str | Path, pattern: str = "*.txt") -> List[str]:
             continue
     return docs
 
+SENT_BOUNDARY_RE = re.compile(r'(?<=[.!?])\s+')
+
+def split_sentences(text: str) -> list[list[str]]:
+    """
+    Split text into sentences and tokenize each sentence.
+    Returns a list of token lists, one per sentence.
+    """
+    text = normalize_text(text)
+    if not text:
+        return []
+    raw_sents = SENT_BOUNDARY_RE.split(text)
+    return [TOKEN_RE.findall(s) for s in raw_sents if s.strip()]
+
+def split_paragraphs(text: str) -> list[str]:
+    """
+    Split text into paragraphs by blank lines; trims whitespace.
+    """
+    text = normalize_text(text)
+    if not text:
+        return []
+    return [p.strip() for p in re.split(r'\n\s*\n', text) if p.strip()]
+
+
 def sliding_windows(tokens: List[str], k: int) -> Iterable[List[str]]:
     """
     Yield consecutive windows of length k from a token sequence.

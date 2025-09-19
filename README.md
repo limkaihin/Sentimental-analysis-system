@@ -5,25 +5,20 @@ This project focuses on creating a system to analyse the sentiment of movie revi
 
 ## Project Structure
 project_directory/
-│
-├── data/ # Folder for external files (lexicons, IMDB dataset)
-│ ├── AFINN-en-165.txt # AFINN lexicon (word sentiment scores)
-│ └── AFINN-emoticon-8.txt # Emoticon sentiment lexicon
-│
-├── src/ # Main source code
-│ ├── extrema_segments.py # Extracts most positive/negative segments
-│ ├── main.py # Main entry point for the program (combines everything)
-│ ├── preprocessing.py # Preprocesses text (if needed)
-│ ├── sentiment_scoring.py # Calculates sentiment scores for words/emoticons
-│ ├── sliding_window.py # Sliding window logic for sentiment analysis
-│ └── visualisation.py # Visualization for sentiment analysis results
-│
-├── tests/ # Folder for unit tests
-│ ├── test_preprocessing.py # Test file for preprocessing sample reviews
-│ ├── test_sentiment_scoring.py # Test file for sentiment scoring logic
-| ├── test_sliding_window_analysis.py # Test file for sliding window analysis
-|
-└── requirements.txt # List of dependencies for the project
+src/: modular source code
+   - preprocessing.py — Unicode normalization, tokenization, file loading, and generic window generator.
+
+   - lexicon.py — unified loader for AFINN-en-165.txt and AFINN-emoticon-8.txt.
+
+   - sentiment_scoring.py — window-level sentiment scoring with AFINN words, emoticons, negation, and intensity.
+   
+   - sliding_window.py — per-review sliding-window generation and scoring, returns (start_index, score).
+
+    extrema_segments.py — finds most positive and most negative k-length segments.
+
+    visualisation.py — plotting utilities to visualize window scores and annotate extrema.
+
+    main.py — CLI entry point to run analysis and optionally save plots.
 
 **Installation**
 

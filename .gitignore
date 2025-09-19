@@ -1,38 +1,47 @@
-# Ignore Python bytecode files
-*.pyc
-*.pyo
+# Byte-compiled / optimized / DLL files
 __pycache__/
+*.py[cod]
+*$py.class
 
-# Ignore virtual environment folders
+# Virtual environments
+.venv/
 venv/
-env/
+.env
+.env.*
 
-# Ignore IDE/editor config files
+# OS metadata
+.DS_Store
+Thumbs.db
+
+# Python packaging/build artifacts
+.build/
+dist/
+build/
+*.egg-info/
+
+# IDEs and editors
 .vscode/
 .idea/
 
-# Ignore Jupyter Notebook checkpoints
+# Logs and caches
+*.log
+.cache/
+.pytest_cache/
+
+# Notebooks checkpoints
 .ipynb_checkpoints/
 
-# Ignore system files
-.DS_Store  # macOS specific
-Thumbs.db  # Windows specific
+# Data outputs and figures
+plots/
+outputs/
+reports/
 
-# Ignore log files
-*.log
+# Large datasets (keep small samples under data/reviews if needed)
+data/aclImdb/
+data/*.zip
+data/*.tar
+data/*.tar.gz
 
-# Ignore dependency directories
-*.egg-info/
-dist/
-build/
-*.egg
-
-# Ignore SQLite database file (if you use it)
-*.sqlite3
-
-# Ignore PyInstaller files
-*.spec
-
-# Ignore other files
-*.bak
-*.swp
+# Optional: keep lexicons but ignore other data files except reviews samples
+# Uncomment if storing only small sample reviews
+# data/reviews/**/*.bak
