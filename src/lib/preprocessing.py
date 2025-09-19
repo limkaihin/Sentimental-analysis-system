@@ -3,6 +3,7 @@ from typing import Iterable, List
 from pathlib import Path
 import re
 import unicodedata
+import gzip
 
 # Regex that captures words and single non-space symbols (keeps emoticons/emoji and punctuation)
 TOKEN_RE = re.compile(r"\w+|[^\w\s]", re.UNICODE)
@@ -29,18 +30,30 @@ def tokenize(text: str) -> List[str]:
     text = normalize_text(text)
     return TOKEN_RE.findall(text)
 
-def read_text_files(root: str | Path, pattern: str = "*.txt") -> List[str]:
+def read_text_files(root: Union[str, Path], pattern: str = "*") -> List[str]:
     """
     Recursively read UTF-8 text files from a directory tree.
-    - Sorted traversal yields deterministic order for tests and reproducibility.
-    - Errors are ignored per file to avoid aborting on a single bad file.
+
+    Supports both plain .txt files and gzip-compressed .gz files:
+    - *.txt are read with standard open.
+    - *.gz are read in text mode via gzip.open(..., 'rt').
+
+    Returns a list of decoded strings. Files with other extensions are skipped.
     """
     root = Path(root)
     docs: List[str] = []
+
     for p in sorted(root.rglob(pattern)):
         try:
-            docs.append(p.read_text(encoding="utf-8", errors="ignore"))
-        except Exception:
+            if p.suffix == ".gz":
+                with gzip.open(p, "rt", encoding="utf-8", errors="ignore") as f:
+                    docs.append(f.read())
+            elif p.suffix == ".txt":
+                docs.append(p.read_text(encoding="utf-8", errors="ignore"))
+            else:
+                continue
+        except Exception as e:
+            print(f"Warning: Failed to read {p}: {e}")
             continue
     return docs
 
