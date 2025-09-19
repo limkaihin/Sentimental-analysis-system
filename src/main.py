@@ -1,80 +1,67 @@
-# main.py
-from sliding_window import sliding_window_sentiment_analysis
-from sentiment_scoring import calculate_window_sentiment
-from extrema_segments import extrema_segments
+from __future__ import annotations
+import argparse
+from pathlib import Path
 from typing import List
-import os
 
-# Load AFINN lexicon
-def load_afinn(filepath: str) -> dict:
+from lexicon import load_tab_lexicon
+from preprocessing import read_text_files
+from sliding_window import sliding_window_sentiment_analysis
+from extrema_segments import extrema_segments
+from visualisation import plot_review_windows, annotate_extrema
+
+def parse_args() -> argparse.Namespace:
     """
-    Load AFINN lexicon from a file.
-    Args:
-        filepath: Path to the AFINN lexicon file.
-    Returns:
-        A dictionary where keys are words and values are sentiment scores.
+    CLI with sensible defaults pointing to the data/ folder:
+    - data contains AFINN-en-165.txt, AFINN-emoticon-8.txt.
+    - data/reviews contains sample review .txt files.
+    All defaults can be overridden without changing code.
     """
-    afinn = {}
-    with open(filepath, 'r') as file:
-        for line in file:
-            word, score = line.split()
-            afinn[word] = int(score)
-    return afinn
+    p = argparse.ArgumentParser(description="Sliding-window sentiment with AFINN and emoticons")
+    p.add_argument("--data_dir", type=str, default="data", help="Base data dir containing lexicons and reviews")
+    p.add_argument("--reviews_subdir", type=str, default="reviews", help="Subfolder under data_dir with .txt reviews")
+    p.add_argument("--afinn_name", type=str, default="AFINN-en-165.txt", help="AFINN lexicon filename under data_dir")
+    p.add_argument("--emoticons_name", type=str, default="AFINN-emoticon-8.txt", help="Emoticon lexicon filename under data_dir")
+    p.add_argument("--window_size", type=int, default=3, help="Sliding window size k")
+    p.add_argument("--plot_first_n", type=int, default=0, help="Plot first N reviews (0 disables)")
+    p.add_argument("--save_dir", type=str, default="", help="Optional output directory for plots")
+    return p.parse_args()
 
-# Load emoticons lexicon
-def load_emoticons(filepath: str) -> dict:
-    """
-    Load emoticons sentiment lexicon from a file.
-    Args:
-        filepath: Path to the emoticons lexicon file.
-    Returns:
-        A dictionary where keys are emoticons and values are sentiment scores.
-    """
-    emoticons = {}
-    with open(filepath, 'r') as file:
-        for line in file:
-            emoticon, score = line.split()
-            emoticons[emoticon] = int(score)
-    return emoticons
+def main() -> None:
+    args = parse_args()
+    base = Path(args.data_dir)
 
-# Load IMDB reviews from a directory
-def load_imdb_reviews(directory: str) -> List[str]:
-    """
-    Load all reviews from a directory.
-    Args:
-        directory: Path to the directory containing review files.
-    Returns:
-        A list of reviews (strings).
-    """
-    reviews = []
-    for filename in os.listdir(directory):
-        with open(os.path.join(directory, filename), 'r') as file:
-            reviews.append(file.read())
-    return reviews
+    # Resolve paths under data/ based on CLI args (no hardcoding in logic).
+    reviews_dir = base / args.reviews_subdir
+    afinn_path = base / args.afinn_name
+    emoticons_path = base / args.emoticons_name
 
-# Paths to lexicons and review directory
-afinn_path = './data/AFINN-en-165.txt'
-emoticons_path = './data/AFINN-emoticon-8.txt'
-train_dir = './data/aclImdb/train/pos'  # For positive reviews
+    # Load data and lexicons.
+    reviews = read_text_files(reviews_dir)
+    if not reviews:
+        print(f"No .txt reviews found under: {reviews_dir}")
+        return
 
-# Load the lexicons
-afinn = load_afinn(afinn_path)
-emoticons = load_emoticons(emoticons_path)
+    afinn = load_tab_lexicon(afinn_path)
+    emoticons = load_tab_lexicon(emoticons_path)
 
-# Load reviews
-reviews = load_imdb_reviews(train_dir)
+    # Sliding-window analysis for all reviews.
+    k = args.window_size
+    per_review_windows: List[List[tuple[int, int]]] = sliding_window_sentiment_analysis(reviews, k, afinn, emoticons)
 
-# Set window size
-k = 3  # Sliding window size
+    # Print extrema and optionally plot.
+    for i, windows in enumerate(per_review_windows, start=1):
+        pos_seg, neg_seg = extrema_segments(windows, k)
+        print(f"Review {i}:")
+        print(f"  Most positive: {pos_seg}")
+        print(f"  Most negative: {neg_seg}")
 
-# Perform sliding window sentiment analysis
-sentiment_results = sliding_window_sentiment_analysis(reviews, k, afinn, emoticons)
+        if args.plot_first_n and i <= args.plot_first_n:
+            ax = plot_review_windows(windows, k, title=f"Review {i}")
+            annotate_extrema(ax, pos_seg, neg_seg)
+            if args.save_dir:
+                outdir = Path(args.save_dir)
+                outdir.mkdir(parents=True, exist_ok=True)
+                ax.figure.savefig(outdir / f"review_{i}.png", dpi=150, bbox_inches="tight")
 
-# Get the most positive and negative segments
-for review_idx, review_sentiments in enumerate(sentiment_results):
-    positive_segment, negative_segment = extrema_segments(review_sentiments, k, afinn, emoticons)
-    
-    print(f"Review {review_idx + 1}:")
-    print("Most positive segment:", positive_segment)
-    print("Most negative segment:", negative_segment)
-    print()
+if __name__ == "__main__":
+    main()

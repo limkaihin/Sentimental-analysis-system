@@ -1,26 +1,19 @@
-# extrema_segments.py
-from sliding_window import sliding_window_sentiment_analysis
+from __future__ import annotations
+from typing import List, Optional, Tuple
 
-def extrema_segments(values: List[int], k: int, afinn: dict, emoticons: dict):
-    """
-    Identify the most positive and most negative sentiment segments in a list of sentiment values.
-    
-    Args:
-        values: A list of sentiment scores for a review (from sliding window analysis).
-        k: The window size for the sliding window.
-        afinn: A dictionary containing AFINN lexicon for words and their sentiment scores.
-        emoticons: A dictionary containing emoticons and their sentiment scores.
+# Segment is (start_index, end_index_inclusive, sum_of_window)
+Segment = Optional[Tuple[int, int, int]]
 
-    Returns:
-        A tuple containing two segments: (most_positive_segment, most_negative_segment),
-        where each segment is represented as (start_idx, end_idx_inclusive, sentiment_sum).
+def extrema_segments(windows: List[Tuple[int, int]], k: int) -> Tuple[Segment, Segment]:
     """
-    windows = sliding_window_sentiment_analysis(values, k, afinn, emoticons)
-    
-    if not windows:
+    Given [(start, score), ...] and window size k, return:
+    - Most positive segment (max sum).
+    - Most negative segment (min sum).
+    Each as (start, end_inclusive, sum). Returns (None, None) if no windows.
+    """
+    if not windows or k <= 0:
         return None, None
 
-    # Find the most positive and most negative segments
     best_pos = max(windows, key=lambda x: x[1])
     best_neg = min(windows, key=lambda x: x[1])
 
