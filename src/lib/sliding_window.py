@@ -4,31 +4,17 @@ from src.lib.preprocessing import tokenize, split_sentences
 from src.lib.sentiment_scoring import calculate_window_sentiment
 
 Unit = Literal["token", "sentence"]
+Window = Tuple[int, int, int]  # (start, end, score)
 
 def sliding_window_sentiment_analysis(
     reviews: List[str],
     k: int,
     afinn: Dict[str, int],
     emoticons: Dict[str, int],
-    unit: Unit = "token",  # default preserves previous token-based behavior
-) -> List[List[Tuple[int, int]]]:
-    """
-    Compute sentiment windows for each review.
-
-    - unit='token':
-        Tokenize the review, slide a length-k token window, score each window.
-        start_index refers to token index.
-
-    - unit='sentence':
-        Split review into tokenized sentences; build windows of k consecutive
-        sentences; score each window by summing the sentence scores.
-        start_index refers to sentence index.
-
-    Returns
-    -------
-    A list (per review) of (start_index, window_score) tuples.
-    """
-    results: List[List[Tuple[int, int]]] = []
+    unit: Unit = "token",
+    debug: bool = False,
+) -> List[List[Window]]:
+    results: List[List[Window]] = []
     if k <= 0:
         return [[] for _ in reviews]
 
@@ -39,29 +25,26 @@ def sliding_window_sentiment_analysis(
             if n < k:
                 results.append([])
                 continue
-
-            cur: List[Tuple[int, int]] = []
+            cur: List[Window] = []
             for i in range(n - k + 1):
-                window = tokens[i : i + k]
-                score = calculate_window_sentiment(window, afinn, emoticons)
-                cur.append((i, score))
+                window = tokens[i:i+k]
+                s = calculate_window_sentiment(window, afinn, emoticons, debug=(debug and i == 0))
+                cur.append((i, i + k - 1, s))
             results.append(cur)
-
-        else:  # unit == "sentence"
-            sents: List[List[str]] = split_sentences(review)  # each item is a tokenized sentence
-            s = len(sents)
+        else:
+            # sentence mode: split into tokenized sentences first
+            sent_tokens: List[List[str]] = split_sentences(review)
+            s = len(sent_tokens)
             if s < k:
                 results.append([])
                 continue
-
-            cur: List[Tuple[int, int]] = []
+            cur: List[Window] = []
             for i in range(s - k + 1):
-                window_sents = sents[i : i + k]
-                # Sum sentiment per sentence in the window
-                score = 0
+                window_sents = sent_tokens[i:i+k]
+                total = 0
                 for sent in window_sents:
-                    score += calculate_window_sentiment(sent, afinn, emoticons)
-                cur.append((i, score))
+                    total += calculate_window_sentiment(sent, afinn, emoticons, debug=False)
+                cur.append((i, i + k - 1, total))
             results.append(cur)
 
     return results

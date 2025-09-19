@@ -1,33 +1,45 @@
 from __future__ import annotations
-from typing import List, Tuple, Optional
+from typing import List, Tuple, Optional, Sequence, Union
+import matplotlib
+matplotlib.use("Agg")  # headless-safe
 import matplotlib.pyplot as plt
 
+Window = Union[Tuple[int, int], Tuple[int, int, int]]
 Segment = Optional[Tuple[int, int, int]]
 
+def _to_xy(windows: Sequence[Window]) -> Tuple[List[int], List[int]]:
+    xs: List[int] = []
+    ys: List[int] = []
+    for w in windows:
+        if len(w) == 2:
+            start, score = w  # (start, score)
+        else:
+            start, _end, score = w  # (start, end, score)
+        xs.append(int(start))
+        ys.append(int(score))
+    return xs, ys
+
 def plot_review_windows(
-    windows: List[Tuple[int, int]],
+    windows: List[Window],
     k: int,
     title: str | None = None,
 ) -> plt.Axes:
-    """
-    Plot the sequence of window sentiment scores versus window start index.
-    Caller decides whether to save/show the figure to keep this module I/O-free.
-    """
     if not windows:
-        fig, ax = plt.subplots()
+        fig, ax = plt.subplots(figsize=(8, 3))
         ax.set_title(title or "No windows to plot")
         ax.set_xlabel(f"Window start (k={k})")
         ax.set_ylabel("Sentiment")
+        ax.grid(True, alpha=0.3)
         return ax
 
-    starts = [s for s, _ in windows]
-    scores = [v for _, v in windows]
-    fig, ax = plt.subplots()
-    ax.plot(starts, scores, marker="o", linestyle="-", linewidth=1.5)
+    xs, ys = _to_xy(windows)
+    fig, ax = plt.subplots(figsize=(8, 3))
+    ax.plot(xs, ys, marker="o", linestyle="-", linewidth=1.5)
     ax.axhline(0, color="gray", linewidth=1, linestyle="--")
     ax.set_xlabel(f"Window start (k={k})")
     ax.set_ylabel("Sentiment")
     ax.set_title(title or "Sliding-window sentiment")
+    ax.grid(True, alpha=0.3)
     return ax
 
 def annotate_extrema(
@@ -37,11 +49,10 @@ def annotate_extrema(
     color_pos: str = "green",
     color_neg: str = "red",
 ) -> None:
-    """
-    Shade the most positive and negative segments on the plot, if provided.
-    """
-    for seg, color, label in [(pos_seg, color_pos, "Most positive"),
-                              (neg_seg, color_neg, "Most negative")]:
+    for seg, color, label in [
+        (pos_seg, color_pos, "Most positive"),
+        (neg_seg, color_neg, "Most negative"),
+    ]:
         if seg is None:
             continue
         start, end, s = seg

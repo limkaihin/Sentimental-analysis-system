@@ -3,53 +3,43 @@ from typing import Dict, List
 import unicodedata
 import string
 
-# Negation and intensity heuristics
 NEGATORS = {"not", "no", "never", "without", "hardly", "scarcely", "n't"}
 INTENSIFIERS: Dict[str, float] = {
     "very": 1.5, "really": 1.4, "extremely": 1.8, "so": 1.3, "too": 1.2,
     "slightly": 0.8, "somewhat": 0.9, "barely": 0.7, "quite": 1.2, "pretty": 1.2
 }
 
-# Extra Unicode punctuation to trim from word edges
 EXTRA_PUNCT = "“”‘’–—…·•«»‹›‒‐‑‱※"
 
 def _norm_word(tok: str) -> str:
-    """
-    Normalize a token for AFINN lookup:
-    - Unicode NFKC normalization
-    - lowercase
-    - strip surrounding ASCII and common Unicode punctuation
-    """
     t = unicodedata.normalize("NFKC", tok).lower()
     return t.strip(string.punctuation + EXTRA_PUNCT)
 
 def calculate_window_sentiment(window: List[str],
                                afinn: Dict[str, int],
-                               emoticons: Dict[str, int]) -> int:
+                               emoticons: Dict[str, int],
+                               debug: bool = False) -> int:
     """
-    Compute sentiment for a token window.
-
-    Rules:
-    - Emoticons/emoji are matched on the raw token (exact symbol match).
-    - Words are normalized via _norm_word() before AFINN lookup.
-    - Negation flips the sign of the current word if a negator occurs within
-      the previous 3 normalized tokens.
-    - Intensifiers multiply the magnitude based on any intensifier tokens
-      within the same previous 3-token scope.
-    - The final score is rounded to an integer for stability.
+    Returns an integer sentiment score for the given token window.
+    Supports:
+      - AFINN word lookup on normalized tokens
+      - emoticon/emoji lookup on raw tokens
+      - simple negation within a 3-token scope
+      - multiplicative intensifiers within the same scope
     """
     if not window:
         return 0
 
-    # Precompute normalized tokens for scope checks
     norm_tokens = [_norm_word(t) for t in window]
-
     score = 0.0
+    dbg = []
+
     for i, raw in enumerate(window):
-        # Emoticons/emoji: check raw token first
-        emo = emoticons.get(raw)
-        if emo:
-            score += emo
+        emo_val = emoticons.get(raw)
+        if emo_val:
+            score += emo_val
+            if debug:
+                dbg.append((raw, raw, 0, emo_val, False, 1.0))
             continue
 
         tok = norm_tokens[i]
@@ -60,14 +50,10 @@ def calculate_window_sentiment(window: List[str],
         if base == 0:
             continue
 
-        # Look back up to 3 previous tokens for context
         scope_start = max(0, i - 3)
         scope = norm_tokens[scope_start:i]
-
-        # Negation
         negated = any(t in NEGATORS for t in scope)
 
-        # Intensifiers (multiplicative)
         intensity = 1.0
         for t in scope:
             intensity *= INTENSIFIERS.get(t, 1.0)
@@ -76,5 +62,13 @@ def calculate_window_sentiment(window: List[str],
         if negated:
             val = -val
         score += val
+
+        if debug:
+            dbg.append((raw, tok, base, 0, negated, intensity))
+
+    if debug and dbg:
+        print("Matches (raw, norm, AFINN, EMO, negated, intensity):")
+        for m in dbg[:20]:
+            print("  ", m)
 
     return int(round(score))
