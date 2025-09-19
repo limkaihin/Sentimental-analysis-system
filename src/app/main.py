@@ -46,6 +46,7 @@ def main() -> None:
 
     afinn = load_tab_lexicon(afinn_path)
     emoticons = load_tab_lexicon(emoticons_path)
+    print(f"AFINN entries: {len(afinn)}; Emoticons entries: {len(emoticons)}")
 
     # Sliding-window analysis for all reviews.
     k = args.window_size
