@@ -49,15 +49,27 @@ def annotate_extrema(
     color_pos: str = "green",
     color_neg: str = "red",
 ) -> None:
-    for seg, color, label in [
-        (pos_seg, color_pos, "Most positive"),
-        (neg_seg, color_neg, "Most negative"),
-    ]:
-        if seg is None:
-            continue
-        start, end, s = seg
-        ax.axvspan(start, end, color=color, alpha=0.15, label=f"{label} (sum={s})")
-    handles, labels = ax.get_legend_handles_labels()
-    if labels:
-        by_label = dict(zip(labels, handles))
+    """
+    Shade extrema spans on the x-axis with sign-aware filtering:
+    - Shade positive only if score > 0
+    - Shade negative only if score < 0
+    """
+    handles = []
+    labels = []
+
+    if pos_seg and pos_seg[2] > 0:
+        ps, pe, pv = pos_seg
+        h = ax.axvspan(ps, pe, color=color_pos, alpha=0.15, label=f"Most positive (sum={pv})")
+        handles.append(h); labels.append("Most positive (sum={pv})")
+
+    if neg_seg and neg_seg[2] < 0:
+        ns, ne, nv = neg_seg
+        h = ax.axvspan(ns, ne, color=color_neg, alpha=0.15, label=f"Most negative (sum={nv})")
+        handles.append(h); labels.append("Most negative (sum={nv})")
+
+    if handles:
+        # De-duplicate legend entries
+        by_label = {}
+        for h, l in zip(handles, labels):
+            by_label[l] = h
         ax.legend(by_label.values(), by_label.keys(), frameon=False)

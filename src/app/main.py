@@ -182,10 +182,14 @@ def main() -> None:
                 print(f"[sent {i}] score={sc} :: {' '.join(toks)}")
             max_idx = max(range(len(sent_scores)), key=lambda i: sent_scores[i]) if sent_scores else None
             min_idx = min(range(len(sent_scores)), key=lambda i: sent_scores[i]) if sent_scores else None
-            if max_idx is not None:
+            if max_idx is not None and sent_scores[max_idx] > 0:
                 print(f"Most positive sentence: idx={max_idx}, score={sent_scores[max_idx]}")
-            if min_idx is not None:
+            else:
+                print("Most positive sentence: none (> 0 not found)")
+            if min_idx is not None and sent_scores[min_idx] < 0:
                 print(f"Most negative sentence: idx={min_idx}, score={sent_scores[min_idx]}")
+            else:
+                print("Most negative sentence: none (< 0 not found)")
 
         # 4) Fixed-size windows (token or sentence unit)
         if args.window_size > 0:
@@ -204,10 +208,14 @@ def main() -> None:
                 for (start, end, sc) in sw:
                     print(f"[win {start}-{end}] score={sc}")
                 pos_seg, neg_seg = extrema_segments(sw, args.window_size)
-                if pos_seg:
+                if pos_seg and pos_seg[2] > 0:
                     print(f"Most positive window : {pos_seg[0]}-{pos_seg[1]} score={pos_seg[2]}")
-                if neg_seg:
+                else:
+                    print("Most positive window : none (> 0 not found)")
+                if neg_seg and neg_seg[2] < 0:
                     print(f"Most negative window : {neg_seg[0]}-{neg_seg[1]} score={neg_seg[2]}")
+                else:
+                    print("Most negative window : none (< 0 not found)")
 
         # 5) Arbitrary-length segments over sentences (Kadane)
         if sent_scores:
@@ -215,20 +223,23 @@ def main() -> None:
             neg_seg = _min_subarray(sent_scores)
             print("\n--- Arbitrary-length segments (sentences) ---")
             print("Sentence scores:", sent_scores)
-            if pos_seg:
+            if pos_seg and pos_seg[2] > 0:
                 ps, pe, pv = pos_seg
                 print(f"Best positive segment: {ps}-{pe} sum={pv}")
                 for i in range(ps, pe + 1):
                     print(f"  [sent {i}] {' '.join(sent_tokens[i])}")
-            if neg_seg:
+            else:
+                print("Best positive segment: none (> 0 not found)")
+            if neg_seg and neg_seg[2] < 0:
                 ns, ne, nv = neg_seg
                 print(f"Best negative segment: {ns}-{ne} sum={nv}")
                 for i in range(ns, ne + 1):
                     print(f"  [sent {i}] {' '.join(sent_tokens[i])}")
+            else:
+                print("Best negative segment: none (< 0 not found)")
 
         # Optional plotting for single review
         if args.plot and plot_review_windows is not None:
-            # Plot whichever unit was requested, then shade fixed-size extrema if available
             sw = sliding_window_sentiment_analysis(
                 reviews=[cleaned],
                 k=args.window_size,
@@ -238,11 +249,11 @@ def main() -> None:
                 debug=False,
             )[0]
             ax = plot_review_windows(sw, k=args.window_size, title="Sliding-window sentiment")
-            # Shade extrema for fixed-size windows
             if sw and annotate_extrema is not None:
                 pos_seg, neg_seg = extrema_segments(sw, args.window_size)
-                annotate_extrema(ax, pos_seg, neg_seg, k=args.window_size)
-            # Save if requested
+                annotate_extrema(ax, pos_seg if (pos_seg and pos_seg[2] > 0) else None,
+                                    neg_seg if (neg_seg and neg_seg[2] < 0) else None,
+                                    k=args.window_size)
             if args.save_dir:
                 out_dir = resolve_path(args.save_dir)
                 out_dir.mkdir(parents=True, exist_ok=True)
@@ -268,7 +279,6 @@ def main() -> None:
         if args.debug:
             print(f"[{txt}] score={score} label={label}")
 
-        # Optional plotting in dataset mode (first N only)
         if args.plot and args.plot_first_n and processed < args.plot_first_n and plot_review_windows is not None:
             sw = sliding_window_sentiment_analysis(
                 reviews=[cleaned],
@@ -281,7 +291,9 @@ def main() -> None:
             ax = plot_review_windows(sw, k=args.window_size, title=txt.name)
             if sw and annotate_extrema is not None:
                 pos_seg, neg_seg = extrema_segments(sw, args.window_size)
-                annotate_extrema(ax, pos_seg, neg_seg, k=args.window_size)
+                annotate_extrema(ax, pos_seg if (pos_seg and pos_seg[2] > 0) else None,
+                                    neg_seg if (neg_seg and neg_seg[2] < 0) else None,
+                                    k=args.window_size)
             if args.save_dir:
                 out_dir = resolve_path(args.save_dir)
                 out_dir.mkdir(parents=True, exist_ok=True)

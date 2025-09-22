@@ -1,47 +1,33 @@
-# Byte-compiled / optimized / DLL files
+# Python
 __pycache__/
 *.py[cod]
-*$py.class
+*.pyo
+*.pyd
+*.so
 
-# Virtual environments
+# Virtual env
 .venv/
 venv/
-.env
-.env.*
+env/
 
-# OS metadata
-.DS_Store
-Thumbs.db
+# Tooling / caches
+.pytest_cache/
+.mypy_cache/
+.coverage
+htmlcov/
 
-# Python packaging/build artifacts
-.build/
-dist/
-build/
-*.egg-info/
-
-# IDEs and editors
+# Editors / OS
 .vscode/
 .idea/
+.DS_Store
 
-# Logs and caches
-*.log
-.cache/
-.pytest_cache/
+# Builds / dist
+build/
+dist/
+*.egg-info/
 
-# Notebooks checkpoints
+# Jupyter
 .ipynb_checkpoints/
 
-# Data outputs and figures
+# Outputs
 plots/
-outputs/
-reports/
-
-# Large datasets (keep small samples under data/reviews if needed)
-data/aclImdb/
-data/*.zip
-data/*.tar
-data/*.tar.gz
-
-# Optional: keep lexicons but ignore other data files except reviews samples
-# Uncomment if storing only small sample reviews
-# data/reviews/**/*.bak
