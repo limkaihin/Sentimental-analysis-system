@@ -1,6 +1,7 @@
 # Core
 python>=3.10
 matplotlib>=3.7
+streamlit>-1.35
 pytest>=7.4
 
 # Optional but useful in many environments

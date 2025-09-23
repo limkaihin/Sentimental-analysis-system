@@ -11,13 +11,23 @@ from ..lib.preprocessing import normalize_text as clean_text, tokenize as tokeni
 from ..lib.sentiment_scoring import calculate_window_sentiment as score_text
 from ..lib.sliding_window import sliding_window_sentiment_analysis
 from ..lib.extrema_segments import extrema_segments
+from ..lib.sentence_scoring import sentences_and_scores, most_positive_negative_sentence
+from ..lib.varlen_segments import best_varlen_segments, segment_sentences
 
-# Optional plotting (loaded only if --plot is used)
+# Optional plotting (loaded only if --plot / --bar_chart is used)
 try:
-    from ..lib.visualisation import plot_review_windows, annotate_extrema  # type: ignore
+    from ..lib.visualisation import plot_review_windows, annotate_extrema,  plot_bar_counts # type: ignore
 except Exception:
     plot_review_windows = None
     annotate_extrema = None
+    plot_bar_counts = None
+
+# Optional word segmentation
+try:
+    from ..lib.word_segmentation import word_break_one, word_break_all  # type: ignore
+except Exception:
+    word_break_one = None
+    word_break_all = None
 
 # ---------- helpers ----------
 ROOT = Path(__file__).resolve().parents[2]  # project root (folder that contains "src")
@@ -48,11 +58,11 @@ def _max_subarray(scores: List[int]) -> Segment:
     best = cur = scores[0]
     start = end = s = 0
     for i in range(1, len(scores)):
-        if cur + scores[i] < scores[i]:
+        if cur + scores[i] <= scores[i]:
             cur = scores[i]; s = i
         else:
             cur += scores[i]
-        if cur > best:
+        if (cur > best) or (cur == best and (i - s) < (end - start)):
             best = cur; start = s; end = i
     return (start, end, best)
 
@@ -69,6 +79,23 @@ def _min_subarray(scores: List[int]) -> Segment:
         if cur < best:
             best = cur; start = s; end = i
     return (start, end, best)
+
+# Fallback bar chart helper if lib.visualisation is unavailable
+def _fallback_plot_bar_counts(counts: Dict[str, int], title: str | None = None):
+    import matplotlib
+    matplotlib.use("Agg")
+    import matplotlib.pyplot as plt
+    labels = ["negative", "neutral", "positive"]
+    values = [counts.get(k, 0) for k in labels]
+    colors = ["red", "gray", "green"]
+    fig, ax = plt.subplots(figsize=(5, 3))
+    ax.bar(labels, values, color=colors)
+    ax.set_ylabel("Count")
+    ax.set_title(title or "Sentiment class distribution")
+    for i, v in enumerate(values):
+        ax.text(i, v + 0.05, str(v), ha="center", va="bottom", fontsize=9)
+    fig.tight_layout()
+    return ax
 
 # ---------- CLI ----------
 def build_parser() -> argparse.ArgumentParser:
@@ -89,7 +116,7 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("--plot_first_n", type=int, default=0, help="Plot first N items (dataset mode)")
     p.add_argument("--save_dir", type=str, default=None, help="If set, save plots/files here")
     p.add_argument("--debug", action="store_true")
-
+   
     # Single-review inputs
     p.add_argument("--text", type=str, default=None, help="Analyse a single review passed on the command line.")
     p.add_argument("--input_file", type=str, default=None, help="Analyse a single review from a .txt file.")
@@ -97,6 +124,10 @@ def build_parser() -> argparse.ArgumentParser:
     # Dataset controls
     p.add_argument("--limit", type=int, default=None, help="Process only first N reviews (dataset mode)")
     p.add_argument("--plot", action="store_true", help="Enable plotting for single-review or dataset mode")
+
+    # Histogram options
+    p.add_argument("--bar_chart", action="store_true", help="Draw a bar chart of sentiment class counts")
+    p.add_argument("--bar_chart_file", type=str, default=None, help="Optional path to save the bar chart PNG")
 
     return p
 
@@ -191,6 +222,24 @@ def main() -> None:
             else:
                 print("Most negative sentence: none (< 0 not found)")
 
+        # 3b) Histogram of sentence classes
+        if sent_scores:
+            counts = {
+                "negative": sum(1 for s in sent_scores if s < 0),
+                "neutral" : sum(1 for s in sent_scores if s == 0),
+                "positive": sum(1 for s in sent_scores if s > 0),
+            }
+            print("\n--- Sentence sentiment histogram ---")
+            print(counts)
+            if args.bar_chart:
+                axh = plot_bar_counts(counts, title="Sentence sentiment distribution") if plot_bar_counts else _fallback_plot_bar_counts(counts, title="Sentence sentiment distribution")
+                # Determine save target
+                if args.save_dir or args.bar_chart_file:
+                    out_dir = resolve_path(args.save_dir) if args.save_dir else Path(".")
+                    out_dir.mkdir(parents=True, exist_ok=True)
+                    target = Path(args.bar_chart_file) if args.bar_chart_file else (out_dir / "sentence_hist.png")
+                    axh.figure.savefig(target, bbox_inches="tight")
+
         # 4) Fixed-size windows (token or sentence unit)
         if args.window_size > 0:
             sw = sliding_window_sentiment_analysis(
@@ -223,18 +272,24 @@ def main() -> None:
             neg_seg = _min_subarray(sent_scores)
             print("\n--- Arbitrary-length segments (sentences) ---")
             print("Sentence scores:", sent_scores)
+            
+            # Positive segment listing
             if pos_seg and pos_seg[2] > 0:
                 ps, pe, pv = pos_seg
                 print(f"Best positive segment: {ps}-{pe} sum={pv}")
                 for i in range(ps, pe + 1):
-                    print(f"  [sent {i}] {' '.join(sent_tokens[i])}")
+                    if sent_scores[i] > 0:
+                        print(f"  [sent {i}] {' '.join(sent_tokens[i])}")
             else:
                 print("Best positive segment: none (> 0 not found)")
+            
+            # Negative segment listing
             if neg_seg and neg_seg[2] < 0:
                 ns, ne, nv = neg_seg
                 print(f"Best negative segment: {ns}-{ne} sum={nv}")
                 for i in range(ns, ne + 1):
-                    print(f"  [sent {i}] {' '.join(sent_tokens[i])}")
+                    if sent_scores[i] < 0:
+                        print(f"  [sent {i}] {' '.join(sent_tokens[i])}")
             else:
                 print("Best negative segment: none (< 0 not found)")
 
@@ -253,7 +308,7 @@ def main() -> None:
                 pos_seg, neg_seg = extrema_segments(sw, args.window_size)
                 annotate_extrema(ax, pos_seg if (pos_seg and pos_seg[2] > 0) else None,
                                     neg_seg if (neg_seg and neg_seg[2] < 0) else None,
-                                    k=args.window_size)
+            )
             if args.save_dir:
                 out_dir = resolve_path(args.save_dir)
                 out_dir.mkdir(parents=True, exist_ok=True)
@@ -293,7 +348,7 @@ def main() -> None:
                 pos_seg, neg_seg = extrema_segments(sw, args.window_size)
                 annotate_extrema(ax, pos_seg if (pos_seg and pos_seg[2] > 0) else None,
                                     neg_seg if (neg_seg and neg_seg[2] < 0) else None,
-                                    k=args.window_size)
+            )
             if args.save_dir:
                 out_dir = resolve_path(args.save_dir)
                 out_dir.mkdir(parents=True, exist_ok=True)
@@ -303,6 +358,13 @@ def main() -> None:
         processed += 1
         if args.limit is not None and processed >= args.limit:
             break
+
+    # Dataset histogram
+    if args.bar_chart and plot_bar_counts is not None:
+        ax = plot_bar_counts(class_counts, title="Dataset sentiment distribution")
+        target = resolve_path(args.save_dir) / "dataset_hist.png" if args.save_dir else Path("dataset_hist.png")
+        target.parent.mkdir(parents=True, exist_ok=True)
+        ax.figure.savefig(target, bbox_inches="tight")
 
 if __name__ == "__main__":
     main()

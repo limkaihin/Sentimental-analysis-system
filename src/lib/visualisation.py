@@ -73,3 +73,16 @@ def annotate_extrema(
         for h, l in zip(handles, labels):
             by_label[l] = h
         ax.legend(by_label.values(), by_label.keys(), frameon=False)
+
+def plot_bar_counts(counts: Dict[str, int], title: str | None = None) -> plt.Axes:
+    fig, ax = plt.subplots(figsize=(5, 3))
+    order = ["negative", "neutral", "positive"]
+    values = [counts.get(k, 0) for k in order]
+    colors = ["red", "gray", "green"]
+    ax.bar(order, values, color=colors)
+    ax.set_ylabel("Count")
+    ax.set_title(title or "Sentiment class distribution")
+    for i, v in enumerate(values):
+        ax.text(i, v + 0.05, str(v), ha="center", va="bottom", fontsize=9)
+    fig.tight_layout()
+    return ax

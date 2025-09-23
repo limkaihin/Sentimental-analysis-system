@@ -16,6 +16,8 @@ def extrema_segments(windows: List[Tuple[int, ...]], k: int) -> Tuple[Segment, S
 
     # Normalize to triples if pairs were provided
     if isinstance(windows[0], tuple) and len(windows[0]) == 2:
+        if k <= 0:
+            return None, None
         windows = [(s, s + k - 1, v) for (s, v) in windows]  # type: ignore[list-item]
 
     best_pos: Segment = None
@@ -23,19 +25,21 @@ def extrema_segments(windows: List[Tuple[int, ...]], k: int) -> Tuple[Segment, S
 
     for start, end, s in windows:  # type: ignore[misc]
         # Best positive
-        if best_pos is None:
-            best_pos = (start, end, s)
-        else:
-            bs, be, bv = best_pos
-            if (s > bv) or (s == bv and (end - start > be - bs)) or (s == bv and end - start == be - bs and start < bs):
+        if s > 0 :
+            if best_pos is None:
                 best_pos = (start, end, s)
+            else:
+                bs, be, bv = best_pos
+                if (s > bv) or (s == bv and (end - start > be - bs)) or (s == bv and end - start == be - bs and start < bs):
+                    best_pos = (start, end, s)
 
         # Best negative
-        if best_neg is None:
-            best_neg = (start, end, s)
-        else:
-            bs, be, bv = best_neg
-            if (s < bv) or (s == bv and (end - start > be - bs)) or (s == bv and end - start == be - bs and start < bs):
+        if s < 0 :
+            if best_neg is None:
                 best_neg = (start, end, s)
+            else:
+                bs, be, bv = best_neg
+                if (s < bv) or (s == bv and (end - start > be - bs)) or (s == bv and end - start == be - bs and start < bs):
+                    best_neg = (start, end, s)
 
     return best_pos, best_neg

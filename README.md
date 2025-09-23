@@ -1,68 +1,104 @@
 # A Lexicon-Driven Approach to Sentiment Analysis (Sentimental Analysis System)
 
-This project focuses on creating a system to analyse the sentiment of movie reviews using a predefined dictionary. The system will compute sentiment scores for each sentence, identify the positive & negative sentences, and use a sliding window technique to find the positive & negative paragraph segments. Text preprocessing, sentiment scoring, and visualisation will be performed in the project, which will allow us to practice Python programming fundamentals such as string manipulation, modular design, and data visualisation.
+-   This project focuses on creating a system to analyse the sentiment of movie reviews using a predefined dictionary. The system will compute sentiment scores for each sentence, identify the positive & negative sentences, and use a sliding window technique to find the positive & negative paragraph segments. Text preprocessing, sentiment scoring, and visualisation will be performed in the project, which will allow us to practice Python programming fundamentals such as string manipulation, modular design, and data visualisation.
 
 
-## Project Structure
-project_directory/
-src/: modular source code
-   - preprocessing.py — Unicode normalization, tokenization, file loading, and generic window generator.
+# What it does
 
-   - lexicon.py — unified loader for AFINN-en-165.txt and AFINN-emoticon-8.txt.
+- Scores text using lexicons, prints per‑sentence scores, finds most positive/negative fixed‑k windows, and finds best positive/negative arbitrary‑length sentence segments via Kadane scans. 
 
-   - sentiment_scoring.py — window-level sentiment scoring with AFINN words, emoticons, negation, and intensity.
-   
-   - sliding_window.py — per-review sliding-window generation and scoring, returns (start_index, score).
+- Plots sliding‑window sentiment and optionally shades the most positive/negative spans; can also render simple bar charts of class counts when enabled.
 
-    extrema_segments.py — finds most positive and most negative k-length segments.
+- Includes utilities to tokenize/split sentences and a dictionary‑driven word segmentation module for spaceless strings. 
 
-    visualisation.py — plotting utilities to visualize window scores and annotate extrema.
+# Folder map
 
-    main.py — CLI entry point to run analysis and optionally save plots.
+- src/lib: preprocessing, lexicon loader, sentiment scoring, sliding windows, extrema selection, visuals, and word segmentation. [attached_file:8461b178-9149-448f-a4ee-5846bce7560a][attached_file:3c0de6dd-29d9-4637-b5ef-6dde37e492ab][attached_file:d06458b7-3549-4494-8e95-197778793214][attached_file:30230d06-ffab-416e-a70e-3431ecb40314][attached_file:9f67e005-14ef-427a-832e-c515fff77bb2][attached_file:92f10f75-553e-47b1-954c-8fdcb02ddd7c][attached_file:f735b092-de23-4458-a1b9-7796a92b8fb4]
 
-**Installation**
+- src/app: CLI entry point main.py that wires everything with argparse flags and optional plotting. 
 
+- tests: example tests for preprocessing, sliding windows, and sentence workflows. 
 
-**Usage** 
+# Install (Windows/macOS/Linux)
 
+- Create and activate a virtual environment, then install requirements with Python’s launcher. 
 
-**Testing** 
+# Windows PowerShell:
 
+- py -m venv .venv; .\.venv\Scripts\Activate.ps1; py -m pip install -r requirements.txt. 
 
-**Dependencies**
+# macOS/Linux:
 
+- python3 -m venv .venv; source .venv/bin/activate; python -m pip install -r requirements.txt. 
 
-**Contributing**
+# Lexicons expected
 
+- Default AFINN and emoticon lexicons are read as token TAB score per line from data/lexicon by the loader, and names can be overridden via CLI flags. 
 
-**License**
+# Quick start (single review)
 
+Example:
 
-**Acknowledgements**
+- py -m src.app.main --text "Good. Bad. Very good!" --unit sentence --window_size 2 --debug. =]
 
+# What prints:
 
+- Per‑sentence scores and sign‑aware extrema, fixed‑k window scores and sign‑aware extrema, and best positive/negative sentence segments with filtered lines. 
 
+# Plotting and histograms
 
+- Add --plot to draw a sliding‑window line plot; when saving is requested the figure is written to save_dir. 
 
+- Add --bar_chart to render and optionally save a bar chart of sentence class counts or dataset label counts if save_dir or --bar_chart_file is specified. 
 
+# Dataset mode
 
+- Place .txt files under data/reviews and run without --text/--input_file to process a collection with optional plotting of the first N files using --plot --plot_first_n N. 
 
+- The code tallies dataset‑level class counts and can save a dataset histogram when --bar_chart is used. 
 
+# Key CLI flags
 
-### Key Sections of the `README.md`:
+- --text / --input_file: select single‑review input mode from a literal or file. 
 
-1. **Project Structure**: Lists the key files and directories in your project.
-2. **Installation**: Details on how to clone the repo, set up a virtual environment, and install dependencies.
-3. **Usage**: Instructions on how to run the sentiment analysis and visualize results.
-4. **Testing**: Explains how to run unit tests for the project.
-5. **Dependencies**: Lists Python libraries your project depends on.
-6. **Contributing**: An invitation for others to contribute to your project.
-7. **License**: Specifies the project's license (e.g., MIT).
-8. **Acknowledgements**: Credits any external resources or datasets used (like AFINN lexicon, IMDB dataset).
+- -unit token|sentence and --window_size k: control sliding‑window unit and size. 
 
-### What You Need to Do:
+- --plot, --save_dir: enable plotting and select output folder for figures. 
 
-1. **Replace the GitHub URL**: In the **Clone the repository** section, change `https://github.com/yourusername/sentiment-analysis-imdb.git` to your actual repository URL.
-2. **License**: Add the `LICENSE` file to your project directory (if not already done), or change the license information if you choose a different license.
+- --bar_chart, --bar_chart_file: enable histogram and optionally choose output path. 
 
-This should help others understand your project and how to run it. Let me know if you need further adjustments!
+- --data_dir/--reviews_subdir/--lexicon_subdir/--afinn_name/--emoticons_name: control data and lexicon locations. 
+
+# How the scoring works
+
+- Preprocessing normalizes input and produces tokens and sentence token lists for downstream scoring.
+
+- Sentiment scoring sums lexicon hits with simple handling and is used for both per‑sentence and window scoring. 
+
+- Sliding windows compute sums over k tokens or k sentences for each start position, returning (start, end, score) triples. 
+
+- Extrema selection chooses most positive and most negative windows with deterministic tie‑breaks on score then span length then earliest start. 
+
+- Arbitrary‑length sentence segments use Kadane scans for max and min subarrays over sentence scores to find the best spans. 
+
+# Optional GUI notes
+
+Visual plotting uses Matplotlib with a headless‑safe backend, so figures can be saved without an interactive display. 
+
+If using a Streamlit UI script in this repo, launch with py -m streamlit run streamlit_app.py from the root and set lexicon file paths in the app’s controls accordingly. 
+
+# Word segmentation utility
+
+- For spaceless strings, word_segmentation provides one best segmentation and all segmentations given a dictionary set. 
+
+- This is exposed via separate functions that can be imported or wired to a CLI if desired. 
+
+# Run tests
+
+- From the repo root with an active venv: py -m pytest -q to run the provided tests. 
+
+# Troubleshooting
+
+- If “streamlit” or “pip” is not recognized, ensure the venv is activated and use py -m pip to install packages. 
+
+- For plotting errors, confirm matplotlib is installed per requirements and rerun with --plot or --bar_chart. 
