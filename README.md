@@ -13,7 +13,7 @@
 
 # Folder map
 
-- src/lib: preprocessing, lexicon loader, sentiment scoring, sliding windows, extrema selection, visuals, and word segmentation. [attached_file:8461b178-9149-448f-a4ee-5846bce7560a][attached_file:3c0de6dd-29d9-4637-b5ef-6dde37e492ab][attached_file:d06458b7-3549-4494-8e95-197778793214][attached_file:30230d06-ffab-416e-a70e-3431ecb40314][attached_file:9f67e005-14ef-427a-832e-c515fff77bb2][attached_file:92f10f75-553e-47b1-954c-8fdcb02ddd7c][attached_file:f735b092-de23-4458-a1b9-7796a92b8fb4]
+- src/lib: preprocessing, lexicon loader, sentiment scoring, sliding windows, extrema selection, visuals, and word segmentation.
 
 - src/app: CLI entry point main.py that wires everything with argparse flags and optional plotting. 
 
