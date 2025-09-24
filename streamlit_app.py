@@ -8,6 +8,7 @@ from src.lib.extrema_segments import extrema_segments
 from src.lib.sentence_scoring import sentences_and_scores, most_positive_negative_sentence
 from src.lib.varlen_segments import best_varlen_segments, segment_sentences
 from src.lib.word_segmentation import word_break_one, word_break_all
+from src.lib.visualisation import plot_review_windows, annotate_extrema, plot_bar_counts
 import matplotlib
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
@@ -66,21 +67,23 @@ with tab1:
 
         # Line plot
         if windows:
-            fig1, ax1 = plt.subplots(figsize=(8,3))
-            xs = [w[0] for w in windows]
-            ys = [w[-1] for w in windows]
-            ax1.plot(xs, ys, marker="o")
-            ax1.axhline(0, color="gray", linestyle="--", linewidth=1)
-            ax1.set_title("Sliding-window sentiment")
-            st.pyplot(fig1)
+            ax = plot_review_windows(windows, k=k, title="Sliding-window sentiment")
+            # extrema based on windows
+            pos_win, neg_win = extrema_segments(windows, k)
+            annotate_extrema(ax, pos_win if (pos_win and pos_win[2] > 0) else None,
+                                neg_win if (neg_win and neg_win[2] < 0) else None)
+            st.pyplot(ax.figure)
 
         # Histogram
         if scores:
-            counts = {"negative": sum(1 for s in scores if s < 0), "neutral": sum(1 for s in scores if s == 0), "positive": sum(1 for s in scores if s > 0)}
-            fig2, ax2 = plt.subplots(figsize=(5,3))
-            ax2.bar(list(counts.keys()), list(counts.values()), color=["red","gray","green"])
-            ax2.set_title("Sentence sentiment distribution")
-            st.pyplot(fig2)
+            counts = {
+                "negative": sum(1 for s in scores if s < 0),
+                "neutral" : sum(1 for s in scores if s == 0),
+                "positive": sum(1 for s in scores if s > 0),
+        }
+        axh = plot_bar_counts(counts, title="Sentence sentiment distribution",
+                          xlabel="Sentiment class", ylabel="Count")
+        st.pyplot(axh.figure)
 
 with tab2:
     raw = st.text_input("Spaceless string", "thisisapen")
