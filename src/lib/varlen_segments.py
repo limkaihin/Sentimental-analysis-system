@@ -11,31 +11,45 @@ def sentence_scores(text: str, afinn: Dict[str, int], emoticons: Dict[str, int])
     return [calculate_window_sentiment(tokens, afinn, emoticons, debug=False) for tokens in sents]
 
 def _max_subarray(scores: List[int]) -> Segment:
+    """
+    Maximum-sum contiguous subarray with tie-breaks:
+    - Restart on ties to prefer later starts.
+    - Prefer shorter span when sums tie.
+    """
     if not scores:
         return None
     best = cur = scores[0]
     start = end = s = 0
     for i in range(1, len(scores)):
-        if cur + scores[i] < scores[i]:
-            cur = scores[i]; s = i
+        # Restart on tie to avoid dragging negatives into a positive span
+        if cur + scores[i] <= scores[i]:
+            cur = scores[i]
+            s = i
         else:
             cur += scores[i]
-        if cur > best:
-            best = cur; start = s; end = i
+        # Update on improvement; prefer shorter span on equal sums
+        if (cur > best) or (cur == best and (i - s) < (end - start)):
+            best = cur
+            start = s
+            end = i
     return (start, end, best)
 
 def _min_subarray(scores: List[int]) -> Segment:
+    """Minimum-sum contiguous subarray (standard implementation)."""
     if not scores:
         return None
     best = cur = scores[0]
     start = end = s = 0
     for i in range(1, len(scores)):
         if cur + scores[i] > scores[i]:
-            cur = scores[i]; s = i
+            cur = scores[i]
+            s = i
         else:
             cur += scores[i]
         if cur < best:
-            best = cur; start = s; end = i
+            best = cur
+            start = s
+            end = i
     return (start, end, best)
 
 def best_varlen_segments(text: str, afinn: Dict[str, int], emoticons: Dict[str, int]) -> Tuple[List[int], Segment, Segment]:
@@ -46,6 +60,5 @@ def segment_sentences(text: str, seg: Segment) -> List[str]:
     if seg is None:
         return []
     start, end, _ = seg
-    # split_sentences returns List[List[str]]; join tokens to reconstruct
-    sent_tokens = split_sentences(text)
-    return [" ".join(toks) for toks in sent_tokens[start:end+1]]
+    sent_tokens = split_sentences(text)  # List[List[str]]
+    return [" ".join(toks) for toks in sent_tokens[start:end + 1]]

@@ -45,12 +45,24 @@ with tab1:
         # Varlen
         scores2, pos_seg, neg_seg = best_varlen_segments(cleaned, afinn, emot)
         st.write("Arbitrary-length sentence scores:", scores2)
+
         if pos_seg and pos_seg[2] > 0:
+            ps, pe, _ = pos_seg
             st.success(f"Best positive segment: {pos_seg}")
-            st.write(segment_sentences(cleaned, pos_seg))
+            pos_items = segment_sentences(cleaned, pos_seg)
+            # show only positive sentences within the span
+            st.write([s for i, s in enumerate(pos_items, start=ps) if scores2[i] > 0])
+        else:
+            st.info("Best positive segment: none (> 0 not found)")
+
         if neg_seg and neg_seg[2] < 0:
+            ns, ne, _ = neg_seg
             st.error(f"Best negative segment: {neg_seg}")
-            st.write(segment_sentences(cleaned, neg_seg))
+            neg_items = segment_sentences(cleaned, neg_seg)
+            # show only negative sentences within the span
+            st.write([s for i, s in enumerate(neg_items, start=ns) if scores2[i] < 0])
+        else:
+            st.info("Best negative segment: none (< 0 not found)")
 
         # Line plot
         if windows:
