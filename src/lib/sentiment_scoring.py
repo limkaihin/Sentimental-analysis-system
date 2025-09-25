@@ -62,6 +62,8 @@ def calculate_window_sentiment(window: List[str],
         if negated:
             val = -val
         score += val
+        if return_contrib and base != 0:
+            contrib[tok] = contrib.get(tok, 0.0) + val
 
         if debug:
             dbg.append((raw, tok, base, 0, negated, intensity))
@@ -71,4 +73,64 @@ def calculate_window_sentiment(window: List[str],
         for m in dbg[:20]:
             print("  ", m)
 
+    if return_contrib:
+        return int(round(score)), contrib
     return int(round(score))
+
+
+# --- Patched function: adds return_contrib parameter safely ---
+def calculate_window_sentiment(window: List[str],
+                               afinn: Dict[str, int],
+                               emoticons: Dict[str, int],
+                               debug: bool = False,
+                               return_contrib: bool = False):
+    """
+    Returns an integer sentiment score for the given token window.
+    If return_contrib=True, returns (score, contrib_dict) where contrib_dict maps
+    normalized tokens -> signed contributions after negation/intensifier effects.
+    """
+    if not window:
+        return (0, {}) if return_contrib else 0
+
+    norm_tokens = [_norm_word(t) for t in window]
+    score = 0.0
+    contrib: Dict[str, float] = {}
+    dbg = []
+
+    for i, raw in enumerate(window):
+        tok = norm_tokens[i]
+        base = afinn.get(tok, 0)
+        if base == 0 and raw in emoticons:
+            base = emoticons[raw]
+
+        if base == 0:
+            if debug:
+                dbg.append((raw, tok, 0, 0, False, 1.0))
+            continue
+
+        # Scope: current token and up to 3 previous normalized tokens
+        scope = norm_tokens[max(0, i - 3):i + 1]
+        negated = any(t in NEGATORS for t in scope)
+
+        intensity = 1.0
+        for t in scope:
+            intensity *= INTENSIFIERS.get(t, 1.0)
+
+        val = base * intensity
+        if negated:
+            val = -val
+        score += val
+
+        if return_contrib:
+            contrib[tok] = contrib.get(tok, 0.0) + val
+
+        if debug:
+            dbg.append((raw, tok, base, 0, negated, intensity))
+
+    if debug and dbg:
+        print("Matches (raw, norm, AFINN, EMO, negated, intensity):")
+        for m in dbg[:20]:
+            print("  ", m)
+
+    out = int(round(score))
+    return (out, contrib) if return_contrib else out

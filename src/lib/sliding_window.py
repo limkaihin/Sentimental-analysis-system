@@ -6,6 +6,22 @@ from src.lib.sentiment_scoring import calculate_window_sentiment
 Unit = Literal["token", "sentence"]
 Window = Tuple[int, int, int]  # (start, end, score)
 
+
+def best_fixed_windows_from_scores(scores: List[int], k: int) -> List[Window]:
+    """Compute all k-sized windows over a per-sentence score array using prefix sums.
+    Returns a list of (start, end, total) for each window.
+    """
+    n = len(scores)
+    if n < k or k <= 0:
+        return []
+    pref = [0] * (n + 1)
+    for i, x in enumerate(scores, 1):
+        pref[i] = pref[i - 1] + x
+    out: List[Window] = []
+    for i in range(0, n - k + 1):
+        total = pref[i + k] - pref[i]
+        out.append((i, i + k - 1, total))
+    return out
 def sliding_window_sentiment_analysis(
     reviews: List[str],
     k: int,
