@@ -3,11 +3,17 @@ from __future__ import annotations
 
 import argparse
 from pathlib import Path
-from typing import List, Tuple, Optional
+from typing import List, Tuple, Optional, Dict
 
 # ---- package imports (relative) ----
 from ..lib.lexicon import load_tab_lexicon
-from ..lib.preprocessing import normalize_text as clean_text, tokenize as tokenize_text, split_sentences
+from ..lib.preprocessing import (
+    normalize_text as clean_text,
+    tokenize as tokenize_text,  # kept for compatibility if needed elsewhere
+    tokenize_smart,             # use for scoring and display
+    split_sentences,
+    set_word_segmentation,      # enable segmentation with lexicon vocab
+)
 from ..lib.sentiment_scoring import calculate_window_sentiment as score_text
 from ..lib.sliding_window import sliding_window_sentiment_analysis
 from ..lib.extrema_segments import extrema_segments
@@ -16,7 +22,7 @@ from ..lib.varlen_segments import best_varlen_segments, segment_sentences
 
 # Optional plotting (loaded only if --plot / --bar_chart is used)
 try:
-    from ..lib.visualisation import plot_review_windows, annotate_extrema,  plot_bar_counts # type: ignore
+    from ..lib.visualisation import plot_review_windows, annotate_extrema, plot_bar_counts  # type: ignore
 except Exception:
     plot_review_windows = None
     annotate_extrema = None
@@ -116,7 +122,7 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("--plot_first_n", type=int, default=0, help="Plot first N items (dataset mode)")
     p.add_argument("--save_dir", type=str, default=None, help="If set, save plots/files here")
     p.add_argument("--debug", action="store_true")
-   
+
     # Single-review inputs
     p.add_argument("--text", type=str, default=None, help="Analyse a single review passed on the command line.")
     p.add_argument("--input_file", type=str, default=None, help="Analyse a single review from a .txt file.")
@@ -153,6 +159,9 @@ def main() -> None:
     emoticon = load_tab_lexicon(emoticon_path)
     _ = combine_lexicons(afinn, emoticon)  # kept for compatibility
 
+    # Enable segmentation using combined lexicon vocabulary (DP fallback active)
+    set_word_segmentation(True, vocab=set(afinn.keys()) | set(emoticon.keys()), fuzzy=True)
+
     # ---------- SINGLE-REVIEW FAST PATH ----------
     review_text: str | None = None
     if args.text:
@@ -165,7 +174,8 @@ def main() -> None:
 
     if review_text is not None:
         cleaned = clean_text(review_text)
-        tokens = tokenize_text(cleaned)
+        tokens = tokenize_smart(cleaned)  # segmentation-aware tokens for scoring
+        cleaned_out = " ".join(tokens)    # Option B: always show segmented on the Cleaned line
 
         # helper: try a few variants to hit lexicon entries
         def lookup(tok: str) -> int:
@@ -186,12 +196,12 @@ def main() -> None:
         # 1) Simple lexicon sum (per token)
         simple_sum = sum(lookup(t) for t in tokens)
 
-        # 2) Official score over the full window: PASS TOKENS (bug fix)
+        # 2) Official score over the full window
         official_score = score_text(tokens, afinn, emoticon, debug=args.debug)
 
         print("=== Sentiment Analysis (single review) ===")
         print("Original:", review_text.strip())
-        print("Cleaned :", cleaned)
+        print("Cleaned :", cleaned_out)
         print("Simple lexicon sum:", simple_sum, "(per-token lookup)")
         print("Official score     :", official_score, "(full-window over tokens)")
 
@@ -203,7 +213,7 @@ def main() -> None:
                     print(f"  {t:>12} -> {sc}")
 
         # 3) Per-sentence scores + extrema sentences
-        sent_tokens = split_sentences(cleaned)
+        sent_tokens = split_sentences(cleaned)  # uses tokenize_smart internally
         sent_scores = [score_text(st, afinn, emoticon, debug=False) for st in sent_tokens]
         print("\n--- Sentence scores ---")
         if not sent_scores:
@@ -272,7 +282,6 @@ def main() -> None:
             neg_seg = _min_subarray(sent_scores)
             print("\n--- Arbitrary-length segments (sentences) ---")
             print("Sentence scores:", sent_scores)
-            
             # Positive segment listing
             if pos_seg and pos_seg[2] > 0:
                 ps, pe, pv = pos_seg
@@ -282,7 +291,6 @@ def main() -> None:
                         print(f"  [sent {i}] {' '.join(sent_tokens[i])}")
             else:
                 print("Best positive segment: none (> 0 not found)")
-            
             # Negative segment listing
             if neg_seg and neg_seg[2] < 0:
                 ns, ne, nv = neg_seg
@@ -306,9 +314,11 @@ def main() -> None:
             ax = plot_review_windows(sw, k=args.window_size, title="Sliding-window sentiment")
             if sw and annotate_extrema is not None:
                 pos_seg, neg_seg = extrema_segments(sw, args.window_size)
-                annotate_extrema(ax, pos_seg if (pos_seg and pos_seg[2] > 0) else None,
-                                    neg_seg if (neg_seg and neg_seg[2] < 0) else None,
-            )
+                annotate_extrema(
+                    ax,
+                    pos_seg if (pos_seg and pos_seg[2] > 0) else None,
+                    neg_seg if (neg_seg and neg_seg[2] < 0) else None,
+                )
             if args.save_dir:
                 out_dir = resolve_path(args.save_dir)
                 out_dir.mkdir(parents=True, exist_ok=True)
@@ -322,14 +332,15 @@ def main() -> None:
         print("(Info) Use --text or --input_file to analyse a single review.")
         return
 
+    class_counts: Dict[str, int] = {"negative": 0, "neutral": 0, "positive": 0}
     processed = 0
     for txt in reviews_dir.rglob("*.txt"):
         text = read_text_file(txt)
-        cleaned = clean_text(text)  # BUG FIX: was clean_text(review_text)
-
-        tokens = tokenize_text(cleaned)
+        cleaned = clean_text(text)
+        tokens = tokenize_smart(cleaned)  # smart tokenization in dataset mode too
         score = score_text(tokens, afinn, emoticon, debug=False)
         label = label_from_score(score)
+        class_counts[label] = class_counts.get(label, 0) + 1
 
         if args.debug:
             print(f"[{txt}] score={score} label={label}")
@@ -346,9 +357,11 @@ def main() -> None:
             ax = plot_review_windows(sw, k=args.window_size, title=txt.name)
             if sw and annotate_extrema is not None:
                 pos_seg, neg_seg = extrema_segments(sw, args.window_size)
-                annotate_extrema(ax, pos_seg if (pos_seg and pos_seg[2] > 0) else None,
-                                    neg_seg if (neg_seg and neg_seg[2] < 0) else None,
-            )
+                annotate_extrema(
+                    ax,
+                    pos_seg if (pos_seg and pos_seg[2] > 0) else None,
+                    neg_seg if (neg_seg and neg_seg[2] < 0) else None,
+                )
             if args.save_dir:
                 out_dir = resolve_path(args.save_dir)
                 out_dir.mkdir(parents=True, exist_ok=True)
@@ -360,8 +373,12 @@ def main() -> None:
             break
 
     # Dataset histogram
-    if args.bar_chart and plot_bar_counts is not None:
-        ax = plot_bar_counts(class_counts, title="Dataset sentiment distribution")
+    if args.bar_chart:
+        ax = (
+            plot_bar_counts(class_counts, title="Dataset sentiment distribution")
+            if plot_bar_counts
+            else _fallback_plot_bar_counts(class_counts, title="Dataset sentiment distribution")
+        )
         target = resolve_path(args.save_dir) / "dataset_hist.png" if args.save_dir else Path("dataset_hist.png")
         target.parent.mkdir(parents=True, exist_ok=True)
         ax.figure.savefig(target, bbox_inches="tight")

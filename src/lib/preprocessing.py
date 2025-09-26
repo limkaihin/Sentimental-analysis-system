@@ -7,9 +7,37 @@ import gzip
 
 # 1) Emoticon extractor (match before generic tokens)
 _EMOTICON_PATTERNS = [
-    r":-?\)", r":-?\(", r";-?\)", r";-?\(", r":-?D", r":D", r":-?P", r":P",
-    r":-?S", r":S", r":-?/", r":/", r":'\(", r":'\)", r":-?\|", r":\|",
-    r":-?O", r":O"
+    # Smiles/frowns (with/without nose), capture repeats
+    r":-?\)+", r":-?\(+", r";-?\)+", r";-?\(+",
+    # 8-face variants (smile/frown + big grin)
+    r"8-?\)+", r"8-?\(+", r"8-?D",
+    # Tongue/grin/concern/slash/pipe (single or nose)
+    r":-?D", r":D", r":-?P", r":P", r":-?p", r":p",
+    r":-?S", r":S", r":-?/", r":/", r":-?\|", r":\|",
+    # Crying
+    r":'\(", r":'\)",
+    # Star-kiss (present in AFINN)
+    r":-?\*", r":\*",
+    # Square/curly bracket faces
+    r":-?[\]\[\}\{]",
+    # Literal ':-?' in AFINN
+    r":-\?",
+    # :o) face
+    r":o\)",
+    # Equals-sign faces and slashes
+    r"=\(", r"=\)", r"=\/", r"=\\", r"=\^/",
+    # Literal ://
+    r"://",
+    # Arms up
+    r"\\o/",
+    # XD family
+    r"X-?D", r"XD", r"x-?D", r"xD",
+    # Hugs/Kisses (explicit forms as per AFINN)
+    r"XO", r"XOXO", r"XOXOXO", r"xo", r"xoxo", r"xoxoxo", r"xoxoxoxo",
+    # Hearts (graded by repeats)
+    r"<3+",
+    # Unicode heart
+    r"♥",
 ]
 _EMO_RE = re.compile("|".join(_EMOTICON_PATTERNS))
 

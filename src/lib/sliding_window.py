@@ -1,11 +1,11 @@
 from __future__ import annotations
 from typing import List, Tuple, Dict, Literal
-from src.lib.preprocessing import tokenize, split_sentences
+
+from src.lib.preprocessing import tokenize_smart, split_sentences
 from src.lib.sentiment_scoring import calculate_window_sentiment
 
 Unit = Literal["token", "sentence"]
 Window = Tuple[int, int, int]  # (start, end, score)
-
 
 def best_fixed_windows_from_scores(scores: List[int], k: int) -> List[Window]:
     """Compute all k-sized windows over a per-sentence score array using prefix sums.
@@ -22,6 +22,7 @@ def best_fixed_windows_from_scores(scores: List[int], k: int) -> List[Window]:
         total = pref[i + k] - pref[i]
         out.append((i, i + k - 1, total))
     return out
+
 def sliding_window_sentiment_analysis(
     reviews: List[str],
     k: int,
@@ -36,19 +37,20 @@ def sliding_window_sentiment_analysis(
 
     for review in reviews:
         if unit == "token":
-            tokens = tokenize(review)
+            # Use segmentation-aware tokens so glued words split and graded emoticons stay intact
+            tokens = tokenize_smart(review)
             n = len(tokens)
             if n < k:
                 results.append([])
                 continue
             cur: List[Window] = []
             for i in range(n - k + 1):
-                window = tokens[i:i+k]
+                window = tokens[i:i + k]
                 s = calculate_window_sentiment(window, afinn, emoticons, debug=(debug and i == 0))
                 cur.append((i, i + k - 1, s))
             results.append(cur)
         else:
-            # sentence mode: split into tokenized sentences first
+            # sentence mode: split into tokenized sentences first (split_sentences uses tokenize_smart)
             sent_tokens: List[List[str]] = split_sentences(review)
             s = len(sent_tokens)
             if s < k:
@@ -56,7 +58,7 @@ def sliding_window_sentiment_analysis(
                 continue
             cur: List[Window] = []
             for i in range(s - k + 1):
-                window_sents = sent_tokens[i:i+k]
+                window_sents = sent_tokens[i:i + k]
                 total = 0
                 for sent in window_sents:
                     total += calculate_window_sentiment(sent, afinn, emoticons, debug=False)
