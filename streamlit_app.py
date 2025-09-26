@@ -72,7 +72,25 @@ with tab1:
         tokens = tokenize(cleaned)
         official_score = calculate_window_sentiment(tokens, afinn, emot, debug=False)
         st.subheader("Official project score")
-        st.write(f"Full-window token score: {official_score}")
+        # Show score depending on sliding-window unit without changing other logic
+        if unit == "sentence":
+            # Reuse the same pipeline to compute a full-window sentence score
+            _sents_fw, _sent_scores_fw = sentences_and_scores(cleaned, afinn, emot)
+            _full_window_sentence_score = sum(_sent_scores_fw) if _sent_scores_fw else 0
+            st.write(f"Full-window sentence score: {_full_window_sentence_score}")
+        else:
+            st.write(f"Full-window token score: {official_score}")
+
+        # Overall score summary (added)
+        try:
+            # Overall review score as sum of sentence scores for easy interpretability
+            # (keeps existing logic intact; purely presentational)
+            overall_review_score = sum(sent_scores) if 'sent_scores' in locals() and sent_scores else official_score
+        except Exception:
+            overall_review_score = official_score
+
+        st.metric(label="Overall Review Score", value=overall_review_score)
+
 
         # ---------------------------------------------------------------------
         # Per-sentence scores and most positive/negative single sentences
