@@ -1,19 +1,24 @@
 from __future__ import annotations
-from typing import Iterable, List
+from typing import Iterable, List, Union
 from pathlib import Path
 import re
 import unicodedata
 import gzip
 
-# Regex that captures words and single non-space symbols (keeps emoticons/emoji and punctuation)
-TOKEN_RE = re.compile(r"\w+|[^\w\s]", re.UNICODE)
+# 1) Emoticon extractor (match before generic tokens)
+_EMOTICON_PATTERNS = [
+    r":-?\)", r":-?\(", r";-?\)", r";-?\(", r":-?D", r":D", r":-?P", r":P",
+    r":-?S", r":S", r":-?/", r":/", r":'\(", r":'\)", r":-?\|", r":\|",
+    r":-?O", r":O"
+]
+_EMO_RE = re.compile("|".join(_EMOTICON_PATTERNS))
+
+# 2) Generic token: words/numbers or single non-space symbol
+_GENERIC_RE = re.compile(r"[A-Za-z0-9]+|[^\sA-Za-z0-9]")
 
 def normalize_text(text: str) -> str:
     """
-    Normalize Unicode and whitespace so tokenization is stable across platforms.
-    - NFKC normalizes look-alike characters.
-    - Convert CRLF/CR to LF to unify newlines.
-    - Collapse runs of spaces/tabs.
+    Unicode/whitespace normalization for stable tokenization. [attached_file:8461b178-9149-448f-a4ee-5846bce7560a]
     """
     if text is None:
         return ""
@@ -24,25 +29,34 @@ def normalize_text(text: str) -> str:
 
 def tokenize(text: str) -> List[str]:
     """
-    Split text into tokens while preserving punctuation and emoticons/emoji,
-    which is important for lexicon-based scoring.
+    Emoticon-aware tokenizer: preserves ':)', ':-(', ':D', etc., as single tokens, then tokenizes the rest. [attached_file:8461b178-9149-448f-a4ee-5846bce7560a]
     """
     text = normalize_text(text)
-    return TOKEN_RE.findall(text)
+    tokens: List[str] = []
+    i = 0
+    n = len(text)
+    while i < n:
+        m = _EMO_RE.match(text, i)
+        if m:
+            tokens.append(m.group(0))
+            i = m.end()
+            continue
+        m2 = _GENERIC_RE.match(text, i)
+        if m2:
+            tok = m2.group(0)
+            if not tok.isspace():
+                tokens.append(tok)
+            i = m2.end()
+            continue
+        i += 1
+    return tokens
 
 def read_text_files(root: Union[str, Path], pattern: str = "*") -> List[str]:
     """
-    Recursively read UTF-8 text files from a directory tree.
-
-    Supports both plain .txt files and gzip-compressed .gz files:
-    - *.txt are read with standard open.
-    - *.gz are read in text mode via gzip.open(..., 'rt').
-
-    Returns a list of decoded strings. Files with other extensions are skipped.
+    Recursively read UTF-8 .txt and .gz files, skipping others. [attached_file:8461b178-9149-448f-a4ee-5846bce7560a]
     """
     root = Path(root)
     docs: List[str] = []
-
     for p in sorted(root.rglob(pattern)):
         try:
             if p.suffix == ".gz":
@@ -57,33 +71,30 @@ def read_text_files(root: Union[str, Path], pattern: str = "*") -> List[str]:
             continue
     return docs
 
-SENT_BOUNDARY_RE = re.compile(r'(?<=[.!?])\s+')
+SENT_BOUNDARY_RE = re.compile(r"(?<=[.!?])\s+")
 
 def split_sentences(text: str) -> list[list[str]]:
     """
-    Split text into sentences and tokenize each sentence.
-    Returns a list of token lists, one per sentence.
+    Split text into sentences and tokenize each into emoticon-preserving tokens. [attached_file:8461b178-9149-448f-a4ee-5846bce7560a]
     """
     text = normalize_text(text)
     if not text:
         return []
     raw_sents = SENT_BOUNDARY_RE.split(text)
-    return [TOKEN_RE.findall(s) for s in raw_sents if s.strip()]
+    return [tokenize(s) for s in raw_sents if s.strip()]
 
 def split_paragraphs(text: str) -> list[str]:
     """
-    Split text into paragraphs by blank lines; trims whitespace.
+    Split text into paragraphs by blank lines. [attached_file:8461b178-9149-448f-a4ee-5846bce7560a]
     """
     text = normalize_text(text)
     if not text:
         return []
-    return [p.strip() for p in re.split(r'\n\s*\n', text) if p.strip()]
-
+    return [p.strip() for p in re.split(r"\n\s*\n", text) if p.strip()]
 
 def sliding_windows(tokens: List[str], k: int) -> Iterable[List[str]]:
     """
-    Yield consecutive windows of length k from a token sequence.
-    Returns empty iterable for invalid k or if not enough tokens.
+    Yield consecutive windows of length k from a token list. [attached_file:8461b178-9149-448f-a4ee-5846bce7560a]
     """
     if k <= 0 or len(tokens) < k:
         return []
