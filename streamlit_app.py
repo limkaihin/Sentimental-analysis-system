@@ -142,7 +142,7 @@ with tab1:
     run_clicked = col_run.button("Run analysis", type="primary")
     if col_clear.button("Clear"):
         text = ""
-        st.experimental_rerun()
+        st.rerun()
 
     if run_clicked:
         if not text or not text.strip():
