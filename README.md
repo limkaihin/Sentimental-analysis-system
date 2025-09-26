@@ -4,7 +4,7 @@ This project analyses the sentiment of movie reviews using dictionary-based scor
 
 ---
 
-## 📂 Project Structure
+##  Project Structure
 
 - **`src/lib/`**  
   Core modules for:
@@ -25,7 +25,7 @@ This project analyses the sentiment of movie reviews using dictionary-based scor
 
 ---
 
-## ⚙️ Installation
+##  Installation
 
 Make sure you have **Python 3.9+** installed.  
 
@@ -43,7 +43,7 @@ pip install -r requirements.txt
 
 ---
 
-## ▶️ Running the Project
+##  Running the Project
 
 ### 1. Streamlit GUI (Recommended)
 
@@ -66,7 +66,7 @@ Features:
 Run directly on text or files for batch processing.
 
 ```bash
-python -m src.app.main --text "Good. Bad. Very good!" --unit sentence --window_size 2 --debug
+python -m src.app.main --text "Good. Bad. Very good!" --unit sentence --window_size 3 --debug
 ```
 
 Flags:
@@ -78,7 +78,7 @@ Flags:
 
 ---
 
-## 📊 Example Outputs
+##  Example Outputs
 
 1. **Streamlit GUI**:  
    - Review overall score (positive/negative/neutral)  
@@ -98,7 +98,7 @@ Flags:
 
 ---
 
-## 🔑 Key Functions
+##  Key Functions
 
 - **Sentence scoring** → per-sentence polarity values  
 - **Token scoring** → fine-grained window scores  
@@ -108,7 +108,7 @@ Flags:
 
 ---
 
-## 🧪 Testing
+##  Testing
 
 Run unit tests with:
 
