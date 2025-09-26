@@ -134,7 +134,7 @@ def sliding_windows(tokens: List[str], k: int) -> Iterable[List[str]]:
 _COMMON_FALLBACK_VOCAB = {
     # pronouns / function words
     "i", "you", "he", "she", "it", "we", "they", "me", "him", "her", "us", "them",
-    "a", "an", "the", "and", "or", "but", "if", "then", "than", "that", "this", "these", "those",
+    "a", "an", "the", "and", "or", "but", "if", "think", "then", "than", "that", "this", "these", "those",
     "is", "am", "are", "was", "were", "be", "been", "being", "do", "did", "done", "does",
     "of", "to", "in", "on", "for", "with", "as", "by", "at", "from", "about", "into", "over",
     "not", "no", "very", "really", "too", "so", "just", "only", "more", "most", "less", "least",
