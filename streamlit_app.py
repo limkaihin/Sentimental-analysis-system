@@ -53,6 +53,55 @@ tab1, tab2 = st.tabs(["Analysis", "Word Segmentation"])
 # -----------------------------------------------------------------------------
 with tab1:
     st.subheader("Input")
+    source = st.radio("Input source", ["Manual", "Upload .txt/.csv"], horizontal=True, key="input_source")
+    uploaded_docs = []
+    selected_text_from_upload = None
+    if source == "Upload .txt/.csv":
+        uploads = st.file_uploader("Upload one or more .txt or .csv files", type=["txt", "csv"], accept_multiple_files=True)
+        if uploads:
+            import csv
+            for f in uploads:
+                name = f.name
+                if name.lower().endswith(".txt"):
+                    try:
+                        content = f.read().decode("utf-8", errors="ignore")
+                    except Exception:
+                        content = f.read().decode("latin-1", errors="ignore")
+                    uploaded_docs.append((name, content))
+                elif name.lower().endswith(".csv"):
+                    try:
+                        text = f.read().decode("utf-8", errors="ignore")
+                    except Exception:
+                    	text = f.read().decode("latin-1", errors="ignore")
+                    rows = list(csv.reader(text.splitlines()))
+                    if rows:
+                        headers = rows[0]
+                        data_rows = rows[1:]
+                        st.info(f"CSV detected: **{name}** with {len(data_rows)} rows and {len(headers)} columns.")
+                        if headers:
+                            col = st.selectbox(f"Pick text column for {name}", headers, key=f"col_{name}")
+                            col_idx = headers.index(col)
+                            mode = st.radio(f"How to use rows from {name}?", ["Pick one row", "Combine all rows"], key=f"mode_{name}", horizontal=True)
+                            if mode == "Pick one row":
+                                if data_rows:
+                                    row_i = st.number_input(f"Row index (1..{len(data_rows)}) for {name}", min_value=1, max_value=len(data_rows), value=1, step=1, key=f"row_{name}")
+                                    val = data_rows[row_i-1][col_idx] if col_idx < len(data_rows[row_i-1]) else ""
+                                    uploaded_docs.append((f"{name} [row {row_i}::{col}]", val))
+                            else:
+                                vals = [r[col_idx] for r in data_rows if col_idx < len(r)]
+                                uploaded_docs.append((f"{name} [all::{col}]", "\n\n".join(vals)))
+                        else:
+                            st.warning(f"No headers found in {name}; please ensure the first row contains column names.")
+                    else:
+                        st.warning(f"{name} appears to be empty.")
+        if uploaded_docs:
+            labels = [f"{i+1}. {nm}" for i,(nm,_) in enumerate(uploaded_docs)]
+            pick = st.selectbox("Select an uploaded document to analyze", labels, index=0)
+            idx = labels.index(pick)
+            selected_text_from_upload = uploaded_docs[idx][1]
+            st.caption("Preview (first 400 chars):")
+            st.code(selected_text_from_upload[:400])
+
     text = st.text_area(
         "Enter text",
         "Good movie. Bad acting. Very good ending!",
@@ -60,6 +109,12 @@ with tab1:
         placeholder="Paste or type a review/document here...",
     )
     unit = st.selectbox("Sliding-window unit", ["sentence", "token"], index=0)
+    seg_enabled = st.checkbox("Split glued words (e.g., iamsad → i am sad)", value=True)
+    seg_fuzzy   = st.checkbox("Fuzzy split unknown words (helps with thismovieistrash)", value=True)
+    common = {"i","am","is","are","was","were","be","being","been","very","not","no","good","bad","sad","happy","movie","film","acting","the","a","an","this","that","trash","great","awful","amazing","terrible"}
+    vocab = set(afinn.keys()) | common
+    set_word_segmentation(seg_enabled, vocab, fuzzy=seg_fuzzy)
+
     k = st.slider("Window size (k)", min_value=3, max_value=15, value=3, help="Fixed-size window length")
 
     if selected_text_from_upload:

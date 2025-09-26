@@ -99,3 +99,134 @@ def sliding_windows(tokens: List[str], k: int) -> Iterable[List[str]]:
     if k <= 0 or len(tokens) < k:
         return []
     return (tokens[i : i + k] for i in range(len(tokens) - k + 1))
+
+
+# === Fuzzy word segmentation fallback =========================================
+# A small built-in vocabulary to help split common phrases even if not in AFINN.
+_COMMON_FALLBACK_VOCAB = {
+    # pronouns / function words
+    "i", "you", "he", "she", "it", "we", "they", "me", "him", "her", "us", "them",
+    "a", "an", "the", "and", "or", "but", "if", "then", "than", "that", "this", "these", "those",
+    "is", "am", "are", "was", "were", "be", "been", "being", "do", "did", "done", "does",
+    "of", "to", "in", "on", "for", "with", "as", "by", "at", "from", "about", "into", "over",
+    "not", "no", "very", "really", "too", "so", "just", "only", "more", "most", "less", "least",
+    # common review words
+    "good", "great", "amazing", "awesome", "excellent", "nice", "love", "like", "fun", "cool",
+    "bad", "terrible", "awful", "poor", "boring", "hate", "dislike", "meh", "ok", "okay",
+    "sad", "happy", "angry", "mad",
+    "movie", "film", "plot", "acting", "actor", "actors", "actress", "story", "sound", "music",
+    "trash", "garbage", "mess", "gem", "must", "watch", "rewatch", "slow", "fast",
+    "worst", "best", "better", "worse",
+}
+
+# Config flags for segmentation
+_ENABLE_WORD_SEGMENTATION = False
+_ENABLE_FUZZY_SEGMENTATION = True
+_WORD_SEG_VOCAB: set = set()
+
+def set_word_segmentation(enabled: bool, vocab: Iterable[str] | None = None, fuzzy: bool = True):
+    """
+    Enable/disable dictionary-based segmentation. If fuzzy=True, use a dynamic-programming
+    fallback that favors known words but can still segment unknown text.
+    """
+    global _ENABLE_WORD_SEGMENTATION, _ENABLE_FUZZY_SEGMENTATION, _WORD_SEG_VOCAB
+    _ENABLE_WORD_SEGMENTATION = bool(enabled)
+    _ENABLE_FUZZY_SEGMENTATION = bool(fuzzy)
+    if vocab is not None:
+        _WORD_SEG_VOCAB = {str(w).strip().lower() for w in vocab if str(w).strip()}
+
+def get_word_segmentation_state():
+    return _ENABLE_WORD_SEGMENTATION, _WORD_SEG_VOCAB, _ENABLE_FUZZY_SEGMENTATION
+
+def word_break_one_fuzzy(text: str, vocab: set[str] | None = None, max_word_len: int = 20) -> list[str]:
+    """
+    DP-based word break that prefers known words but will still split unknown text.
+    Cost model:
+      - known word (in vocab or fallback): small cost (-5 bonus -> cost -5)
+      - unknown word: positive cost proportional to length (len)
+    We minimize total cost, which yields longer sequences of known words; unknown chunks are
+    split into shorter pieces rather than left as one long token.
+    """
+    if not text:
+        return []
+    t = text.lower()
+    V = set(vocab or set())
+    V |= _COMMON_FALLBACK_VOCAB
+
+    n = len(t)
+    INF = 10**9
+    # dp[i] = (cost, prev_index)
+    dp = [(INF, -1)] * (n + 1)
+    dp[0] = (0, -1)
+
+    for i in range(n):
+        base_cost, _ = dp[i]
+        if base_cost >= INF:
+            continue
+        for j in range(i + 1, min(n, i + max_word_len) + 1):
+            w = t[i:j]
+            if w in V:
+                cost = base_cost - 5  # reward known words
+            else:
+                # penalize unknowns; shorter unknown chunks preferred
+                cost = base_cost + len(w)
+            if cost < dp[j][0]:
+                dp[j] = (cost, i)
+
+    # reconstruct
+    if dp[n][0] >= INF:
+        return [text]
+    parts = []
+    cur = n
+    while cur > 0:
+        prev = dp[cur][1]
+        parts.append(t[prev:cur])
+        cur = prev
+    parts.reverse()
+    return parts
+
+def _segment_token_if_needed(tok: str) -> list[str]:
+    """
+    If segmentation is enabled, attempt strict dictionary split first.
+    If that doesn't split, and fuzzy is enabled, try word_break_one_fuzzy.
+    """
+    if not _ENABLE_WORD_SEGMENTATION:
+        return [tok]
+    t = tok.lower()
+    if not t.isalpha() or len(t) <= 3 or t in _WORD_SEG_VOCAB:
+        return [tok]
+    # 1) Strict dictionary-based split (if available)
+    try:
+        from src.lib.word_segmentation import word_break_one
+        seg = word_break_one(t, _WORD_SEG_VOCAB)
+        if isinstance(seg, (list, tuple)) and len(seg) > 1:
+            return list(seg)
+        if isinstance(seg, str) and " " in seg.strip():
+            parts = [p for p in seg.strip().split() if p]
+            if len(parts) > 1:
+                return parts
+    except Exception:
+        pass
+    # 2) Fuzzy fallback
+    if _ENABLE_FUZZY_SEGMENTATION:
+        parts = word_break_one_fuzzy(t, _WORD_SEG_VOCAB)
+        if len(parts) > 1:
+            return parts
+    return [tok]
+
+
+def tokenize_smart(text: str) -> list[str]:
+    base = tokenize(text)
+    out: list[str] = []
+    for tok in base:
+        out.extend(_segment_token_if_needed(tok))
+    return out
+
+def split_sentences(text: str) -> List[List[str]]:
+    t = normalize_text(text)
+    if not t:
+        return []
+    pieces = [s.strip() for s in re.split(r'(?<=[.!?])\s+', t) if s.strip()]
+    if len(pieces) == 1:
+        pieces = [s.strip() for s in re.split(r'(?<=[.!?])', t) if s.strip()]
+    return [tokenize_smart(p) for p in pieces]
