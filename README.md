@@ -15,7 +15,7 @@
 
 - src/lib: preprocessing, lexicon loader, sentiment scoring, sliding windows, extrema selection, visuals, and word segmentation.
 
-- src/app: CLI entry point main.py that wires everything with argparse flags and optional plotting. 
+- src/app: CLI entry point main.python that wires everything with argparse flags and optional plotting. 
 
 - tests: example tests for preprocessing, sliding windows, and sentence workflows. 
 
@@ -25,7 +25,7 @@
 
 # Windows PowerShell:
 
-- py -m venv .venv; .\.venv\Scripts\Activate.ps1; py -m pip install -r requirements.txt. 
+- python -m venv .venv; .\.venv\Scripts\Activate.ps1; python -m pip install -r requirements.txt. 
 
 # macOS/Linux:
 
@@ -39,7 +39,7 @@
 
 Example:
 
-- py -m src.app.main --text "Good. Bad. Very good!" --unit sentence --window_size 2 --debug. =]
+- python -m src.app.main --text "Good. Bad. Very good!" --unit sentence --window_size 2 --debug. =]
 
 # What prints:
 
@@ -85,7 +85,7 @@ Example:
 
 Visual plotting uses Matplotlib with a headless‑safe backend, so figures can be saved without an interactive display. 
 
-If using a Streamlit UI script in this repo, launch with py -m streamlit run streamlit_app.py from the root and set lexicon file paths in the app’s controls accordingly. 
+If using a Streamlit UI script in this repo, launch with python -m streamlit run streamlit_app.python from the root and set lexicon file paths in the app’s controls accordingly. 
 
 # Word segmentation utility
 
@@ -95,10 +95,10 @@ If using a Streamlit UI script in this repo, launch with py -m streamlit run str
 
 # Run tests
 
-- From the repo root with an active venv: py -m pytest -q to run the provided tests. 
+- From the repo root with an active venv: python -m pytest -q to run the provided tests. 
 
 # Troubleshooting
 
-- If “streamlit” or “pip” is not recognized, ensure the venv is activated and use py -m pip to install packages. 
+- If “streamlit” or “pip” is not recognized, ensure the venv is activated and use python -m pip to install packages. 
 
 - For plotting errors, confirm matplotlib is installed per requirements and rerun with --plot or --bar_chart. 
