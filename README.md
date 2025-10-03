@@ -70,11 +70,9 @@ python -m src.app.main --text "Good. Bad. Very good!" --k 3
 ```
 
 Flags:
-- `--text` / `--input_file` → review input (string or file)  
-- `--unit token|sentence` → sliding window unit  
-- `--window_size k` → fixed-size window length  
-- `--plot` → generate sliding-window sentiment plot  
-- `--bar_chart` → generate bar chart of sentiment class counts  
+- `--text` / `--file` → review input (string or file)   
+- `--k ` → window size  
+- `--dict` → dictionary file for segmentation  
 
 ---
 
