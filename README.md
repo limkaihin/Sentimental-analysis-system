@@ -50,7 +50,7 @@ pip install -r requirements.txt
 This launches an interactive web interface to paste reviews and view results.
 
 ```bash
-streamlit run streamlit_app.py
+python -m streamlit run streamlit_app.py
 ```
 
 Features:
