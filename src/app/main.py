@@ -10,6 +10,7 @@ from src.lib.preprocessing import normalize_text, split_sentences, set_word_segm
 from src.lib.sentiment_scoring import sentence_scores
 from src.lib.sliding_window import sliding_window_sentiment_over_sentences, extrema_segments
 from src.lib.varlen_segments import best_varlen_segments_from_scores
+from src.lib.visualisation import plot_sentence_scores, plot_sentiment_timeline, save_chart_as_html
 
 def main():
     parser = argparse.ArgumentParser(description="AFINN sentiment analysis CLI")
@@ -49,6 +50,13 @@ def main():
     for i, toks in enumerate(sents):
         print(f"[{i}] {' '.join(toks)} → {scores[i]}")
     
+    # SAVES CHARTS FOR CLI
+    bar_chart = plot_sentence_scores(scores, sents)
+    timeline_chart = plot_sentiment_timeline(scores, sents)
+    save_chart_as_html(bar_chart, "cli_sentence_scores.html")
+    save_chart_as_html(timeline_chart, "cli_sentiment_timeline.html")
+    print("\n[INFO] Charts saved as cli_sentence_scores.html and cli_sentiment_timeline.html")
+
     print(f"\nFixed windows (k={args.k}):")
     wins = sliding_window_sentiment_over_sentences(scores, args.k)
     pos_win, neg_win = extrema_segments(wins)
