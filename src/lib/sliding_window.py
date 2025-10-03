@@ -1,68 +1,34 @@
+# sliding_window.py
+# Purpose: Fixed-size sliding windows over sentence scores; find best +/- windows.
+
 from __future__ import annotations
-from typing import List, Tuple, Dict, Literal
 
-from src.lib.preprocessing import tokenize_smart, split_sentences
-from src.lib.sentiment_scoring import calculate_window_sentiment
-
-Unit = Literal["token", "sentence"]
-Window = Tuple[int, int, int]  # (start, end, score)
-
-def best_fixed_windows_from_scores(scores: List[int], k: int) -> List[Window]:
-    """Compute all k-sized windows over a per-sentence score array using prefix sums.
-    Returns a list of (start, end, total) for each window.
+def sliding_window_sentiment_over_sentences(scores: list[int], k: int) -> list[tuple[int, int, int]]:
     """
-    n = len(scores)
-    if n < k or k <= 0:
+    Return [(start_idx, end_idx, sum)] for every k-sentence window.
+    """
+    if k <= 0 or not scores or len(scores) < k:
         return []
-    pref = [0] * (n + 1)
-    for i, x in enumerate(scores, 1):
-        pref[i] = pref[i - 1] + x
-    out: List[Window] = []
-    for i in range(0, n - k + 1):
-        total = pref[i + k] - pref[i]
-        out.append((i, i + k - 1, total))
+    
+    out: list[tuple[int, int, int]] = []
+    cur = sum(scores[:k])
+    out.append((0, k - 1, cur))
+    
+    for i in range(k, len(scores)):
+        cur += scores[i] - scores[i - k]
+        out.append((i - k + 1, i, cur))
+    
     return out
 
-def sliding_window_sentiment_analysis(
-    reviews: List[str],
-    k: int,
-    afinn: Dict[str, int],
-    emoticons: Dict[str, int],
-    unit: Unit = "token",
-    debug: bool = False,
-) -> List[List[Window]]:
-    results: List[List[Window]] = []
-    if k <= 0:
-        return [[] for _ in reviews]
-
-    for review in reviews:
-        if unit == "token":
-            # Use segmentation-aware tokens so glued words split and graded emoticons stay intact
-            tokens = tokenize_smart(review)
-            n = len(tokens)
-            if n < k:
-                results.append([])
-                continue
-            cur: List[Window] = []
-            for i in range(n - k + 1):
-                window = tokens[i:i + k]
-                s = calculate_window_sentiment(window, afinn, emoticons, debug=(debug and i == 0))
-                cur.append((i, i + k - 1, s))
-            results.append(cur)
-        else:
-            # sentence mode: split into tokenized sentences first (split_sentences uses tokenize_smart)
-            sent_tokens: List[List[str]] = split_sentences(review)
-            s = len(sent_tokens)
-            if s < k:
-                results.append([])
-                continue
-            cur: List[Window] = []
-            for i in range(s - k + 1):
-                window_sents = sent_tokens[i:i + k]
-                total = 0
-                for sent in window_sents:
-                    total += calculate_window_sentiment(sent, afinn, emoticons, debug=False)
-                cur.append((i, i + k - 1, total))
-            results.append(cur)
-
-    return results
+def extrema_segments(windows: list[tuple[int, int, int]]):
+    """
+    Return (best_positive_window, best_negative_window) or (None, None).
+    """
+    if not windows:
+        return None, None
+    
+    best_pos = max(windows, key=lambda t: t[2])
+    best_neg = min(windows, key=lambda t: t[2])
+    
+    return (best_pos if best_pos[2] > 0 else None,
+            best_neg if best_neg[2] < 0 else None)
