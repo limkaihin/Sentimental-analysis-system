@@ -66,7 +66,7 @@ Features:
 Run directly on text or files for batch processing.
 
 ```bash
-python -m src.app.main --text "Good. Bad. Very good!" --unit sentence --window_size 3 --debug
+python -m src.app.main --text "Good. Bad. Very good!" --k 3
 ```
 
 Flags:
