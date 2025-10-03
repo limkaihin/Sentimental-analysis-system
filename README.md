@@ -105,11 +105,3 @@ Flags:
 - **Visualization** → Streamlit plots and charts  
 
 ---
-
-##  Testing
-
-Run unit tests with:
-
-```bash
-pytest tests/
-```
